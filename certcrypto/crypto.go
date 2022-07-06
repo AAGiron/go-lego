@@ -146,6 +146,21 @@ func GenerateCSR(privateKey crypto.PrivateKey, domain string, san []string, must
 	return x509.CreateCertificateRequest(rand.Reader, &template, privateKey)
 }
 
+func GenerateWrappedCSR(privateKey crypto.PrivateKey, domain string, san []string, mustStaple bool, certPSK []byte) ([]byte, error) {
+	template := x509.CertificateRequest{
+		Subject:  pkix.Name{CommonName: domain},
+		DNSNames: san,
+	}
+
+	if mustStaple {
+		template.ExtraExtensions = append(template.ExtraExtensions, pkix.Extension{
+			Id:    tlsFeatureExtensionOID,
+			Value: ocspMustStapleFeature,
+		})
+	}
+	return x509.CreateWrappedCertificateRequest(rand.Reader, &template, privateKey, certPSK)
+}
+
 func PEMEncode(data interface{}) []byte {
 	return pem.EncodeToMemory(PEMBlock(data))
 }

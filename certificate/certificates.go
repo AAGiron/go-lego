@@ -5,6 +5,7 @@ import (
 	"crypto"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -60,6 +61,7 @@ type ObtainRequest struct {
 	MustStaple                     bool
 	PreferredChain                 string
 	AlwaysDeactivateAuthorizations bool
+	CertPSK												 string
 }
 
 // ObtainForCSRRequest The request to obtain a certificate matching the CSR passed into it.
@@ -139,7 +141,7 @@ func (c *Certifier) Obtain(request ObtainRequest) (*Resource, error) {
 	log.Infof("[%s] acme: Validations succeeded; requesting certificates", strings.Join(domains, ", "))
 
 	failures := make(obtainError)
-	cert, err := c.getForOrder(domains, order, request.Bundle, request.PrivateKey, request.MustStaple, request.PreferredChain)
+	cert, err := c.getForOrder(domains, order, request.Bundle, request.PrivateKey, request.MustStaple, request.PreferredChain, request.CertPSK) // certPSK
 	if err != nil {
 		for _, auth := range authz {
 			failures[challenge.GetTargetedDomain(auth)] = err
@@ -228,7 +230,7 @@ func (c *Certifier) ObtainForCSR(request ObtainForCSRRequest) (*Resource, error)
 	return cert, nil
 }
 
-func (c *Certifier) getForOrder(domains []string, order acme.ExtendedOrder, bundle bool, privateKey crypto.PrivateKey, mustStaple bool, preferredChain string) (*Resource, error) {
+func (c *Certifier) getForOrder(domains []string, order acme.ExtendedOrder, bundle bool, privateKey crypto.PrivateKey, mustStaple bool, preferredChain, certPSK string) (*Resource, error) {
 	if privateKey == nil {
 		var err error
 		privateKey, err = certcrypto.GeneratePrivateKey(c.options.KeyType)
@@ -253,8 +255,21 @@ func (c *Certifier) getForOrder(domains []string, order acme.ExtendedOrder, bund
 		}
 	}
 
+	var csr []byte
+	var err error
+
 	// TODO: should the CSR be customizable?
-	csr, err := certcrypto.GenerateCSR(privateKey, commonName, san, mustStaple)
+	if certPSK == "" {
+		csr, err = certcrypto.GenerateCSR(privateKey, commonName, san, mustStaple)
+	} else {
+		decodedCertPSK, err := hex.DecodeString(certPSK)
+		if err != nil {
+			return nil, err
+		}
+
+		csr, err = certcrypto.GenerateWrappedCSR(privateKey, commonName, san, mustStaple, decodedCertPSK)
+	}
+		
 	if err != nil {
 		return nil, err
 	}

@@ -173,6 +173,10 @@ func obtainCertificate(ctx *cli.Context, client *lego.Client) (*certificate.Reso
 			PreferredChain:                 ctx.String("preferred-chain"),
 			AlwaysDeactivateAuthorizations: ctx.Bool("always-deactivate-authorizations"),
 		}
+		if ctx.IsSet("certpsk") {
+			request.CertPSK = ctx.String("certpsk")
+		}
+		
 		return client.Certificate.Obtain(request)
 	}
 
