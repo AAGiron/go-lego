@@ -48,6 +48,7 @@ type CertificatesStorage struct {
 	pfx         bool
 	pfxPassword string
 	filename    string // Deprecated
+	certPSKID   string
 }
 
 // NewCertificatesStorage create a new certificates storage.
@@ -59,11 +60,12 @@ func NewCertificatesStorage(ctx *cli.Context) *CertificatesStorage {
 		pfx:         ctx.Bool("pfx"),
 		pfxPassword: ctx.String("pfx.pass"),
 		filename:    ctx.String("filename"),
+		certPSKID:   ctx.String("idcertpsk"),
 	}
 }
 
-func (s *CertificatesStorage) CreateRootFolder() {
-	err := createNonExistingFolder(s.rootPath)
+func (s *CertificatesStorage) CreateRootFolder() {	
+	err := createNonExistingFolder(filepath.Join(s.rootPath, s.certPSKID))
 	if err != nil {
 		log.Fatalf("Could not check/create path: %v", err)
 	}
@@ -171,7 +173,7 @@ func (s *CertificatesStorage) WriteFile(domain, extension string, data []byte) e
 		baseFileName = sanitizedDomain(domain)
 	}
 
-	filePath := filepath.Join(s.rootPath, baseFileName+extension)
+	filePath := filepath.Join(s.rootPath, s.certPSKID, baseFileName+extension)
 
 	return os.WriteFile(filePath, data, filePerm)
 }

@@ -137,5 +137,10 @@ func CreateFlags(defaultPath string) []cli.Flag {
 			Usage: "Cert PSK to be used in the Wrapped Certificate",
 			Value: "",
 		},
+		&cli.StringFlag{
+			Name: "idcertpsk",
+			Usage: "Identity of the Cert PSK",
+			Value: "",
+		},
 	}
 }
