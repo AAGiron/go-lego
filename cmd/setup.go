@@ -1,6 +1,6 @@
 package cmd
 
-import (
+import (	
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -34,7 +34,14 @@ func setup(ctx *cli.Context, accountsStorage *AccountsStorage) (*Account, *lego.
 }
 
 func newClient(ctx *cli.Context, acc registration.User, keyType certcrypto.KeyType) *lego.Client {
-	config := lego.NewConfig(acc)
+	var config *lego.Config
+
+	if ctx.Bool("pqtls") {
+		config = lego.NewPQTLSConfig(acc, ctx)
+	} else {
+		config = lego.NewConfig(acc)
+	}
+	
 	config.CADirURL = ctx.String("server")
 
 	config.Certificate = lego.CertificateConfig{

@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/registration"
+	"github.com/urfave/cli/v2"
 )
 
 const (
@@ -60,6 +61,18 @@ func NewConfig(user registration.User) *Config {
 	}
 }
 
+func NewPQTLSConfig(user registration.User, ctx *cli.Context) *Config {	
+	return &Config{
+		CADirURL:   LEDirectoryProduction,
+		User:       user,
+		HTTPClient: createPQTLSHTTPClient(ctx.String("kex")),
+		Certificate: CertificateConfig{
+			KeyType: certcrypto.RSA2048,
+			Timeout: 30 * time.Second,
+		},
+	}
+}
+
 type CertificateConfig struct {
 	KeyType certcrypto.KeyType
 	Timeout time.Duration
@@ -85,6 +98,38 @@ func createDefaultHTTPClient() *http.Client {
 			},
 		},
 	}
+}
+
+func createPQTLSHTTPClient(curveString string) *http.Client {
+
+	tlsCfg := &tls.Config{
+		ServerName: os.Getenv(caServerNameEnvVar),
+		RootCAs:    initCertPool(),
+		PQTLSEnabled: true,
+		IgnoreSigAlg: true,
+	}
+
+	curveID := tls.StringToCurveIDMap[curveString]
+
+	if curveID != tls.CurveID(0) {
+		tlsCfg.CurvePreferences = []tls.CurveID{curveID}
+	}
+
+	httpClient := &http.Client{
+		Timeout: 2 * time.Minute,
+		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
+			TLSHandshakeTimeout:   30 * time.Second,
+			ResponseHeaderTimeout: 30 * time.Second,
+			TLSClientConfig: tlsCfg,
+		},
+	}
+
+	return httpClient
 }
 
 // initCertPool creates a *x509.CertPool populated with the PEM certificates

@@ -142,5 +142,15 @@ func CreateFlags(defaultPath string) []cli.Flag {
 			Usage: "Identity of the Cert PSK",
 			Value: "",
 		},
+		&cli.BoolFlag{
+			Name: "pqtls",
+			Usage: "By setting this flag to true, the ACME Client will perform a PQTLS connection with the ACME server",
+			Value: false,
+		},
+		&cli.StringFlag{
+			Name: "kex",
+			Usage: "Set the KEX algorithm to be used in the TLS connection",
+			Value: "",
+		},
 	}
 }
