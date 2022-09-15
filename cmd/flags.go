@@ -138,7 +138,7 @@ func CreateFlags(defaultPath string) []cli.Flag {
 			Value: "",
 		},
 		&cli.StringFlag{
-			Name: "idcertpsk",
+			Name: "certlabel",
 			Usage: "Identity of the Cert PSK",
 			Value: "",
 		},

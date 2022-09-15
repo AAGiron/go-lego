@@ -60,7 +60,7 @@ func NewCertificatesStorage(ctx *cli.Context) *CertificatesStorage {
 		pfx:         ctx.Bool("pfx"),
 		pfxPassword: ctx.String("pfx.pass"),
 		filename:    ctx.String("filename"),
-		certPSKID:   ctx.String("idcertpsk"),
+		certPSKID:   ctx.String("certlabel"),
 	}
 }
 

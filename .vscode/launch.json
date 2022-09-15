@@ -11,7 +11,7 @@
       "mode": "debug",
       "cwd": "${workspaceRoot}",
       "program": "${workspaceRoot}/cmd/lego/main.go",
-      "args": ["-s", "https://127.0.0.1:14000/dir", "-d", "teste", "-m", "teste@teste.com", "--http.port", "\":5002\"", "--idcertpsk", "normal_cert", "--http", "-a", "--pqtls", "--kex", "Kyber512", "run"]
+      "args": ["-s", "https://127.0.0.1:14000/dir", "-d", "teste", "-m", "teste@teste.com", "--http.port", "\":5002\"", "--certlabel", "normal_cert", "--http", "-a", "--pqtls", "--kex", "Kyber512", "run"]
     }
   ]
 }
