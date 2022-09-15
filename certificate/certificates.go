@@ -266,8 +266,8 @@ func (c *Certifier) getForOrder(domains []string, order acme.ExtendedOrder, bund
 		if err != nil {
 			return nil, err
 		}
-
-		csr, err = certcrypto.GenerateWrappedCSR(privateKey, commonName, san, mustStaple, decodedCertPSK)
+		fmt.Printf("\nLEGO will generate a CSR with a wrapped public key...\n\n")
+		csr, err = certcrypto.GenerateWrappedCSR(privateKey, commonName, san, mustStaple, decodedCertPSK)				
 	}
 		
 	if err != nil {

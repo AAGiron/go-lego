@@ -83,6 +83,8 @@ func (s *CertificatesStorage) GetRootPath() string {
 }
 
 func (s *CertificatesStorage) SaveResource(certRes *certificate.Resource) {
+	fmt.Printf("\nSaving certificates and keys:\n\n")
+
 	domain := certRes.Domain
 
 	// We store the certificate, private key and metadata in different files
@@ -174,6 +176,8 @@ func (s *CertificatesStorage) WriteFile(domain, extension string, data []byte) e
 	}
 
 	filePath := filepath.Join(s.rootPath, s.certPSKID, baseFileName+extension)
+
+	fmt.Printf("%s\n", filePath)
 
 	return os.WriteFile(filePath, data, filePerm)
 }
