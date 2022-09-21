@@ -4,6 +4,7 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/liboqs_sig"
 	"crypto/rsa"
 	"encoding/base64"
 	"fmt"
@@ -44,6 +45,19 @@ func (j *JWS) SignContent(url string, content []byte) (*jose.JSONWebSignature, e
 			alg = jose.ES256
 		} else if k.Curve == elliptic.P384() {
 			alg = jose.ES384
+		}
+	case *liboqs_sig.PrivateKey:
+		switch k.SigId {
+		case liboqs_sig.Dilithium2:
+			alg = jose.Dilithium2
+		case liboqs_sig.Dilithium3:
+			alg = jose.Dilithium2
+		case liboqs_sig.Dilithium5:
+			alg = jose.Dilithium5
+		case liboqs_sig.Falcon512:
+			alg = jose.Falcon512
+		case liboqs_sig.Falcon1024:
+			alg = jose.Falcon1024
 		}
 	}
 
