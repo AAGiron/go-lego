@@ -176,6 +176,12 @@ func PEMBlock(data interface{}) *pem.Block {
 		pemBlock = &pem.Block{Type: "CERTIFICATE REQUEST", Bytes: key.Raw}
 	case DERCertificateBytes:
 		pemBlock = &pem.Block{Type: "CERTIFICATE", Bytes: []byte(data.(DERCertificateBytes))}
+	case *liboqs_sig.PrivateKey:
+		privBytes, err := x509.MarshalPKCS8PrivateKey(key)
+		if err != nil {
+			panic(err)
+		}		
+		pemBlock = &pem.Block{Type: "PQC PRIVATE KEY", Bytes: privBytes}
 	}
 
 	return pemBlock
