@@ -4,3 +4,4 @@
 .vscode/
 dist/
 builds/
+__debug_bin
