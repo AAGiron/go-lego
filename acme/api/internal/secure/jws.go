@@ -127,6 +127,10 @@ func (j *JWS) GetKeyAuthorization(token string) (string, error) {
 		publicKey = k.Public()
 	case *rsa.PrivateKey:
 		publicKey = k.Public()
+	case liboqs_sig.PrivateKey:
+		publicKey = k.Public()
+	case *liboqs_sig.PrivateKey:
+		publicKey = k.Public()
 	}
 
 	// Generate the Key Authorization for the challenge
