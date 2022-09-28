@@ -152,5 +152,10 @@ func CreateFlags(defaultPath string) []cli.Flag {
 			Usage: "Set the KEX algorithm to be used in the TLS connection",
 			Value: "",
 		},
+		&cli.StringFlag{
+			Name:  "certalgo",
+			Usage: "The signature algorithm to be used in the certificate issuing. Possible values: P256, P348, 2048, 4096, 8192, Dilithium2, Dilithium3, Dilithium5, Falcon512, Falcon1024",
+			Value: "P256",
+		},
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
+	"crypto/liboqs_sig"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -27,7 +28,14 @@ const (
 	RSA2048 = KeyType("2048")
 	RSA4096 = KeyType("4096")
 	RSA8192 = KeyType("8192")
+	Dilithium2 = KeyType("Dilithium2")
+	Dilithium3 = KeyType("Dilithium3")
+	Dilithium5 = KeyType("Dilithium5")
+	Falcon512  = KeyType("Falcon512")
+	Falcon1024 = KeyType("Falcon1024")
 )
+
+var liboqsKeyTypes = []string{"Dilithium2", "Dilithium3", "Dilithium5", "Falcon512", "Falcon1024"}
 
 const (
 	// OCSPGood means that the certificate is valid.
@@ -99,7 +107,7 @@ func ParsePEMPrivateKey(key []byte) (crypto.PrivateKey, error) {
 
 	if key, err := x509.ParsePKCS8PrivateKey(keyBlockDER.Bytes); err == nil {
 		switch key := key.(type) {
-		case *rsa.PrivateKey, *ecdsa.PrivateKey, ed25519.PrivateKey:
+		case *rsa.PrivateKey, *ecdsa.PrivateKey, ed25519.PrivateKey, *liboqs_sig.PrivateKey:
 			return key, nil
 		default:
 			return nil, fmt.Errorf("found unknown private key type in PKCS#8 wrapping: %T", key)
@@ -125,6 +133,12 @@ func GeneratePrivateKey(keyType KeyType) (crypto.PrivateKey, error) {
 		return rsa.GenerateKey(rand.Reader, 4096)
 	case RSA8192:
 		return rsa.GenerateKey(rand.Reader, 8192)
+	case KeyTypeIsLiboqs(keyType):
+		_, pqcPriv, err := liboqs_sig.GenerateKey(liboqs_sig.NameToSigID(string(keyType)))
+		if err != nil {
+			return nil, err
+		}
+		return pqcPriv, nil
 	}
 
 	return nil, fmt.Errorf("invalid KeyType: %s", keyType)
@@ -177,6 +191,12 @@ func PEMBlock(data interface{}) *pem.Block {
 		pemBlock = &pem.Block{Type: "CERTIFICATE REQUEST", Bytes: key.Raw}
 	case DERCertificateBytes:
 		pemBlock = &pem.Block{Type: "CERTIFICATE", Bytes: []byte(data.(DERCertificateBytes))}
+	case *liboqs_sig.PrivateKey:
+		privBytes, err := x509.MarshalPKCS8PrivateKey(key)
+		if err != nil {
+			panic(err)
+		}		
+		pemBlock = &pem.Block{Type: "PQC PRIVATE KEY", Bytes: privBytes}
 	}
 
 	return pemBlock
@@ -297,4 +317,13 @@ func generateDerCert(privateKey *rsa.PrivateKey, expiration time.Time, domain st
 	}
 
 	return x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
+}
+
+func KeyTypeIsLiboqs(kt KeyType) KeyType {
+	for _, v := range liboqsKeyTypes {
+		if string(kt) == v {
+			return kt
+		}
+	}
+	return KeyType("")
 }

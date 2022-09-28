@@ -62,6 +62,7 @@ type ObtainRequest struct {
 	PreferredChain                 string
 	AlwaysDeactivateAuthorizations bool
 	CertPSK												 string
+	CertAlgorithm			  					 certcrypto.KeyType
 }
 
 // ObtainForCSRRequest The request to obtain a certificate matching the CSR passed into it.
@@ -141,7 +142,7 @@ func (c *Certifier) Obtain(request ObtainRequest) (*Resource, error) {
 	log.Infof("[%s] acme: Validations succeeded; requesting certificates", strings.Join(domains, ", "))
 
 	failures := make(obtainError)
-	cert, err := c.getForOrder(domains, order, request.Bundle, request.PrivateKey, request.MustStaple, request.PreferredChain, request.CertPSK) // certPSK
+	cert, err := c.getForOrder(domains, order, request.Bundle, request.PrivateKey, request.MustStaple, request.PreferredChain, request.CertAlgorithm, request.CertPSK) // certPSK
 	if err != nil {
 		for _, auth := range authz {
 			failures[challenge.GetTargetedDomain(auth)] = err
@@ -230,10 +231,10 @@ func (c *Certifier) ObtainForCSR(request ObtainForCSRRequest) (*Resource, error)
 	return cert, nil
 }
 
-func (c *Certifier) getForOrder(domains []string, order acme.ExtendedOrder, bundle bool, privateKey crypto.PrivateKey, mustStaple bool, preferredChain, certPSK string) (*Resource, error) {
+func (c *Certifier) getForOrder(domains []string, order acme.ExtendedOrder, bundle bool, privateKey crypto.PrivateKey, mustStaple bool, preferredChain, certPSK string, certAlgorithm certcrypto.KeyType) (*Resource, error) {
 	if privateKey == nil {
 		var err error
-		privateKey, err = certcrypto.GeneratePrivateKey(c.options.KeyType)
+		privateKey, err = certcrypto.GeneratePrivateKey(certAlgorithm)
 		if err != nil {
 			return nil, err
 		}

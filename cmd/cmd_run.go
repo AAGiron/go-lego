@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/certificate"
 	"github.com/go-acme/lego/v4/lego"
 	"github.com/go-acme/lego/v4/log"
@@ -172,6 +173,7 @@ func obtainCertificate(ctx *cli.Context, client *lego.Client) (*certificate.Reso
 			MustStaple:                     ctx.Bool("must-staple"),
 			PreferredChain:                 ctx.String("preferred-chain"),
 			AlwaysDeactivateAuthorizations: ctx.Bool("always-deactivate-authorizations"),
+			CertAlgorithm: 									certcrypto.KeyType(ctx.String("certalgo")),
 		}
 		if ctx.IsSet("certpsk") {
 			request.CertPSK = ctx.String("certpsk")
