@@ -157,5 +157,10 @@ func CreateFlags(defaultPath string) []cli.Flag {
 			Usage: "The signature algorithm to be used in the certificate issuing. Possible values: P256, P348, 2048, 4096, 8192, Dilithium2, Dilithium3, Dilithium5, Falcon512, Falcon1024",
 			Value: "P256",
 		},
+		&cli.StringFlag{
+			Name:  "wrapalgo",
+			Usage: "The symmetric cryptography algorithm to be used in the PKIELP proposal. Possible values: AES256, Ascon80pq.",
+			Value: "AES256",
+		},
 	}
 }

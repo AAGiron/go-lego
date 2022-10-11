@@ -41,6 +41,11 @@ type Resource struct {
 	CSR               []byte `json:"-"`
 }
 
+type PKIELPInfo struct {
+	CertPSK string
+	WrapAlgorithm string
+}
+
 // ObtainRequest The request to obtain certificate.
 //
 // The first domain in domains is used for the CommonName field of the certificate,
@@ -60,9 +65,9 @@ type ObtainRequest struct {
 	PrivateKey                     crypto.PrivateKey
 	MustStaple                     bool
 	PreferredChain                 string
-	AlwaysDeactivateAuthorizations bool
-	CertPSK												 string
+	AlwaysDeactivateAuthorizations bool	
 	CertAlgorithm			  					 certcrypto.KeyType
+	PKIELPData                     PKIELPInfo
 }
 
 // ObtainForCSRRequest The request to obtain a certificate matching the CSR passed into it.
@@ -142,7 +147,7 @@ func (c *Certifier) Obtain(request ObtainRequest) (*Resource, error) {
 	log.Infof("[%s] acme: Validations succeeded; requesting certificates", strings.Join(domains, ", "))
 
 	failures := make(obtainError)
-	cert, err := c.getForOrder(domains, order, request.Bundle, request.PrivateKey, request.MustStaple, request.PreferredChain, request.CertAlgorithm, request.CertPSK) // certPSK
+	cert, err := c.getForOrder(domains, order, request.Bundle, request.PrivateKey, request.MustStaple, request.PreferredChain, request.CertAlgorithm, request.PKIELPData) // certPSK
 	if err != nil {
 		for _, auth := range authz {
 			failures[challenge.GetTargetedDomain(auth)] = err
@@ -231,7 +236,7 @@ func (c *Certifier) ObtainForCSR(request ObtainForCSRRequest) (*Resource, error)
 	return cert, nil
 }
 
-func (c *Certifier) getForOrder(domains []string, order acme.ExtendedOrder, bundle bool, privateKey crypto.PrivateKey, mustStaple bool, preferredChain string, certAlgorithm certcrypto.KeyType, certPSK string) (*Resource, error) {
+func (c *Certifier) getForOrder(domains []string, order acme.ExtendedOrder, bundle bool, privateKey crypto.PrivateKey, mustStaple bool, preferredChain string, certAlgorithm certcrypto.KeyType, pkiELPData PKIELPInfo) (*Resource, error) {
 	if privateKey == nil {
 		var err error
 		privateKey, err = certcrypto.GeneratePrivateKey(certAlgorithm)
@@ -260,15 +265,15 @@ func (c *Certifier) getForOrder(domains []string, order acme.ExtendedOrder, bund
 	var err error
 
 	// TODO: should the CSR be customizable?
-	if certPSK == "" {
+	if pkiELPData.CertPSK == "" {
 		csr, err = certcrypto.GenerateCSR(privateKey, commonName, san, mustStaple)
 	} else {
-		decodedCertPSK, err := hex.DecodeString(certPSK)
+		decodedCertPSK, err := hex.DecodeString(pkiELPData.CertPSK)
 		if err != nil {
 			return nil, err
 		}
 		fmt.Printf("\nLEGO will generate a CSR with a wrapped public key...\n\n")
-		csr, err = certcrypto.GenerateWrappedCSR(privateKey, commonName, san, mustStaple, decodedCertPSK)				
+		csr, err = certcrypto.GenerateWrappedCSR(privateKey, commonName, san, mustStaple, decodedCertPSK, pkiELPData.WrapAlgorithm)
 	}
 		
 	if err != nil {

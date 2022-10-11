@@ -174,10 +174,8 @@ func obtainCertificate(ctx *cli.Context, client *lego.Client) (*certificate.Reso
 			PreferredChain:                 ctx.String("preferred-chain"),
 			AlwaysDeactivateAuthorizations: ctx.Bool("always-deactivate-authorizations"),
 			CertAlgorithm: 									certcrypto.KeyType(ctx.String("certalgo")),
-		}
-		if ctx.IsSet("certpsk") {
-			request.CertPSK = ctx.String("certpsk")
-		}
+			PKIELPData: certificate.PKIELPInfo{CertPSK: ctx.String("certpsk"), WrapAlgorithm: ctx.String("wrapalgo")},
+		}		
 		
 		return client.Certificate.Obtain(request)
 	}
