@@ -11,7 +11,22 @@
       "mode": "debug",
       "cwd": "${workspaceRoot}",
       "program": "${workspaceRoot}/cmd/lego/main.go",
-      "args": ["-s", "https://127.0.0.1:14000/dir", "-d", "teste", "-m", "teste@teste.com", "--http.port", "\":5002\"", "--certlabel", "normal_cert", "--http", "-a", "--pqtls", "--kex", "Kyber512", "run"]
+      "args": [
+        "-s", "https://127.0.0.1:14000/dir", 
+        "-d", "teste", 
+        "-m", "teste@teste.com", 
+        "--http.port", ":5002", 
+        "--certpsk", "fbfa4718b9902d75b85f5b1dcfb68cdddb8645ea843d218ae592485b7b470aca",
+        "--certlabel", "06eab6a88bdd4538ec6381c35043f06dd91ff33018fce65852da02ed5db0acca4e2fc942223ea0f92469d1def8f49b37583c19e012456fc1727eb88dfda8120ec5e6b2ea6cdcb7fa626fe0bea98647af0d34cb4b629b15ea3a69242ea397fbfb7722f5de68af96522a9e6ead3306a2ebc6",
+        "--http", 
+        "-a", 
+        "--pqtls", 
+        "--kex", "Kyber512", 
+        "-k", "Dilithium2",
+        "--certalgo", "P256",
+        "--wrapalgo", "Ascon80pq",
+        "run"
+      ]
     }
   ]
 }
