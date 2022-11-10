@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"bufio"
+	"encoding/csv"
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/certificate"
@@ -68,6 +70,9 @@ backups of this folder is ideal.
 `
 
 func run(ctx *cli.Context) error {
+	timer := time.Now
+	start := timer()	
+
 	accountsStorage := NewAccountsStorage(ctx)
 
 	account, client := setup(ctx, accountsStorage)
@@ -96,7 +101,13 @@ func run(ctx *cli.Context) error {
 		// Due to us not returning partial certificate we can just exit here instead of at the end.
 		log.Fatalf("Could not obtain certificates:\n\t%v", err)
 	}
-
+	
+	elapsedTime := timer().Sub(start)
+		
+	if ctx.IsSet("timingcsv") {
+		writeElapsedTime(float64(elapsedTime)/float64(time.Millisecond), ctx.String("wrapalgo"), ctx.String("certalgo"), ctx.String("timingcsv"))
+	}
+	
 	certsStorage.SaveResource(cert)
 
 	meta := map[string]string{
@@ -193,4 +204,32 @@ func obtainCertificate(ctx *cli.Context, client *lego.Client) (*certificate.Reso
 		PreferredChain:                 ctx.String("preferred-chain"),
 		AlwaysDeactivateAuthorizations: ctx.Bool("always-deactivate-authorizations"),
 	})
+}
+
+func writeElapsedTime(elapsedTime float64, wrapAlgo, certAlgo, timingCSVPath string) {	
+
+	var certAlgorithm string
+	if wrapAlgo != "" {
+		certAlgorithm = wrapAlgo + "_ECDSA-" + certAlgo
+	} else if certAlgo == "P256" || certAlgo == "P384" || certAlgo == "P521" {
+		certAlgorithm = "ECDSA_" + certAlgo
+	}	else {  // post-quantum algorithm
+		certAlgorithm = certAlgo
+	}
+
+	csvFile, err := os.OpenFile(timingCSVPath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		log.Fatalf("failed opening file: %s", err)
+	}
+
+	csvwriter := csv.NewWriter(csvFile)
+
+	toWrite := []string{certAlgorithm, fmt.Sprintf("%f", elapsedTime)}
+	
+	if err := csvwriter.Write(toWrite); err != nil {
+		log.Fatalf("error writing record to file. err: %s", err)
+	}
+	
+	csvwriter.Flush()
+	csvFile.Close()
 }

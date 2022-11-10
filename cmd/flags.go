@@ -162,5 +162,10 @@ func CreateFlags(defaultPath string) []cli.Flag {
 			Usage: "The symmetric cryptography algorithm to be used in the PKIELP proposal. Possible values: AES256, Ascon80pq.",
 			Value: "",
 		},
+		&cli.StringFlag{
+			Name:  "timingcsv",
+			Usage: "Path to the CSV file where the timing metrics are written to.",
+			Value: "",
+		},
 	}
 }
