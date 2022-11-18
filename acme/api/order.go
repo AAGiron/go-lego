@@ -2,10 +2,21 @@ package api
 
 import (
 	"encoding/base64"
+	"encoding/csv"
 	"errors"
+	"fmt"
+	"io"
+	"os"
+	"strconv"
+	"time"
 
 	"github.com/go-acme/lego/v4/acme"
 )
+
+var PerformLoadTest bool
+var NumThreads int
+var LoadTestDurationSeconds int
+var LoadTestCSVPath, CertAlgo, WrapAlgo string
 
 type OrderService service
 
@@ -52,6 +63,28 @@ func (o *OrderService) UpdateForCSR(orderURL string, csr []byte) (acme.ExtendedO
 	}
 
 	var order acme.Order
+
+	if PerformLoadTest {
+		c := make(chan int)		
+		successfulRequests := 0
+
+		for i := 0; i < NumThreads; i++ {
+			go o.testFinalizeOrder(orderURL, csrMsg, &order, c)
+		}
+		
+		for i := 0; i < NumThreads; i++ {
+			successfulRequests = successfulRequests + <-c
+		}
+
+		if LoadTestCSVPath != "" {
+			if err := writeLoadTestResults(successfulRequests); err != nil {
+				panic(err)
+			}
+		}
+
+		fmt.Printf("Successfull requests: %d\n", successfulRequests)
+	}
+
 	_, err := o.core.post(orderURL, csrMsg, &order)
 	if err != nil {
 		return acme.ExtendedOrder{}, err
@@ -62,4 +95,90 @@ func (o *OrderService) UpdateForCSR(orderURL string, csr []byte) (acme.ExtendedO
 	}
 
 	return acme.ExtendedOrder{Order: order}, nil
+}
+
+func (o *OrderService) testFinalizeOrder(orderURL string, csrMsg acme.CSRMessage, order *acme.Order, c chan int) {
+	// numRequests := 30	
+	successfulRequests := 0
+
+	// for i := 0; i < numRequests; i++ {
+	// 	resp, err := o.core.post(orderURL, csrMsg, order)		
+	// 	if err != nil {
+	// 		continue
+	// 	}	
+	// 	if order.Status == acme.StatusInvalid {
+	// 		continue
+	// 	}
+	// 	if resp.StatusCode != 200 {
+	// 		continue
+	// 	}
+
+	// 	successfulRequests = successfulRequests + 1
+	// }
+	
+	loop:
+    for timeout := time.After(time.Duration(LoadTestDurationSeconds)*time.Second); ; {
+			select {
+			case <-timeout:
+				break loop
+			default:
+			}
+			
+			resp, err := o.core.post(orderURL, csrMsg, order)		
+			if err != nil {
+				continue
+			}	
+			if order.Status == acme.StatusInvalid {
+				continue
+			}
+			if resp.StatusCode != 200 {
+				continue
+			}
+
+			successfulRequests = successfulRequests + 1
+    }
+
+	c <- successfulRequests
+	// fmt.Printf("Successfull requests: %d\n", successfulRequests)
+}
+
+func writeLoadTestResults(successfulRequests int) error {
+
+	var toWrite []string
+	certAlgorithm := GetToBeIssuedCertificateAlgorithm(WrapAlgo, CertAlgo)
+
+	csvFile, err := os.OpenFile(LoadTestCSVPath, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return err	
+	}
+
+	csvwriter := csv.NewWriter(csvFile)
+	csvReader := csv.NewReader(csvFile)
+	_, err = csvReader.Read()	
+	if err == io.EOF {
+		toWrite = []string{"Certificate Public Key Algorithm", "Successful Requests"}
+		if err := csvwriter.Write(toWrite); err != nil {
+			return err
+		}
+	}
+
+	toWrite = []string{certAlgorithm, strconv.Itoa(successfulRequests)}
+	
+	if err := csvwriter.Write(toWrite); err != nil {
+		return err
+	}
+	
+	csvwriter.Flush()
+	csvFile.Close()
+	return nil
+}
+
+func GetToBeIssuedCertificateAlgorithm(wrapAlgo, certAlgo string) string {
+	if wrapAlgo != "" {
+		return wrapAlgo + "_ECDSA-" + certAlgo
+	} else if certAlgo == "P256" || certAlgo == "P384" || certAlgo == "P521" {
+		return "ECDSA_" + certAlgo
+	}	else {  // post-quantum algorithm
+		return certAlgo
+	}
 }

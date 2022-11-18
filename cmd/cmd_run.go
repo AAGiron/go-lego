@@ -4,10 +4,12 @@ import (
 	"bufio"
 	"encoding/csv"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/go-acme/lego/v4/acme/api"
 	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/certificate"
 	"github.com/go-acme/lego/v4/lego"
@@ -173,6 +175,13 @@ func register(ctx *cli.Context, client *lego.Client) (*registration.Resource, er
 }
 
 func obtainCertificate(ctx *cli.Context, client *lego.Client) (*certificate.Resource, error) {
+	api.PerformLoadTest = ctx.Bool("loadtestfinalize")
+	api.NumThreads = ctx.Int("numthreads")
+	api.LoadTestDurationSeconds = ctx.Int("loadtestduration")
+	api.LoadTestCSVPath = ctx.String("loadtestcsv")
+	api.CertAlgo = ctx.String("certalgo")
+	api.WrapAlgo = ctx.String("wrapalgo")
+
 	bundle := !ctx.Bool("no-bundle")
 
 	domains := ctx.StringSlice("domains")
@@ -208,23 +217,25 @@ func obtainCertificate(ctx *cli.Context, client *lego.Client) (*certificate.Reso
 
 func writeElapsedTime(elapsedTime float64, wrapAlgo, certAlgo, timingCSVPath string) {	
 
-	var certAlgorithm string
-	if wrapAlgo != "" {
-		certAlgorithm = wrapAlgo + "_ECDSA-" + certAlgo
-	} else if certAlgo == "P256" || certAlgo == "P384" || certAlgo == "P521" {
-		certAlgorithm = "ECDSA_" + certAlgo
-	}	else {  // post-quantum algorithm
-		certAlgorithm = certAlgo
-	}
+	var toWrite []string
+	certAlgorithm := api.GetToBeIssuedCertificateAlgorithm(wrapAlgo, certAlgo)
 
-	csvFile, err := os.OpenFile(timingCSVPath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	csvFile, err := os.OpenFile(timingCSVPath, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		log.Fatalf("failed opening file: %s", err)
 	}
 
 	csvwriter := csv.NewWriter(csvFile)
+	csvReader := csv.NewReader(csvFile)
+	_, err = csvReader.Read()	
+	if err == io.EOF {
+		toWrite = []string{"Certificate Public Key Algorithm", "Issuance time (ms)"}
+		if err := csvwriter.Write(toWrite); err != nil {
+			log.Fatalf("error writing record to file. err: %s", err)
+		}
+	}
 
-	toWrite := []string{certAlgorithm, fmt.Sprintf("%f", elapsedTime)}
+	toWrite = []string{certAlgorithm, fmt.Sprintf("%f", elapsedTime)}
 	
 	if err := csvwriter.Write(toWrite); err != nil {
 		log.Fatalf("error writing record to file. err: %s", err)

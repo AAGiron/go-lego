@@ -132,6 +132,8 @@ func CreateFlags(defaultPath string) []cli.Flag {
 			Usage: "Set the certificate timeout value to a specific value in seconds. Only used when obtaining certificates.",
 			Value: 30,
 		},
+
+		// PKIELP related flags
 		&cli.StringFlag{
 			Name: "certpsk",
 			Usage: "Cert PSK to be used in the Wrapped Certificate",
@@ -162,9 +164,33 @@ func CreateFlags(defaultPath string) []cli.Flag {
 			Usage: "The symmetric cryptography algorithm to be used in the PKIELP proposal. Possible values: AES256, Ascon80pq.",
 			Value: "",
 		},
+
+		// Timing measurement related flags
 		&cli.StringFlag{
 			Name:  "timingcsv",
 			Usage: "Path to the CSV file where the timing metrics are written to.",
+			Value: "",
+		},
+
+		// Load Test related flags
+		&cli.BoolFlag{
+			Name: "loadtestfinalize",
+			Usage: "By setting this flag to true, the ACME Client will perform a load test in the /finalize-order/ endpoint of the ACME Server",
+			Value: false,
+		},
+		&cli.IntFlag{
+			Name:  "numthreads",
+			Usage: "Number of threads to be used in the load test. This flag will only take effect if '-loadtestfinalize' flag is true.",
+			Value: 1,
+		},
+		&cli.IntFlag{
+			Name:  "loadtestduration",
+			Usage: "Set the duration in seconds for the load test. This flag will only take effect if '-loadtestfinalize' flag is true.",
+			Value: 5,
+		},
+		&cli.StringFlag{
+			Name:  "loadtestcsv",
+			Usage: "Path to the CSV file where the load tests results are written to.",
 			Value: "",
 		},
 	}
