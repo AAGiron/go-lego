@@ -73,7 +73,7 @@ backups of this folder is ideal.
 
 func run(ctx *cli.Context) error {
 	timer := time.Now
-	start := timer()	
+	startFullIssuance := timer()	
 
 	accountsStorage := NewAccountsStorage(ctx)
 
@@ -97,6 +97,8 @@ func run(ctx *cli.Context) error {
 	certsStorage := NewCertificatesStorage(ctx)
 	certsStorage.CreateRootFolder()
 
+	startRenewal := timer()	
+
 	cert, err := obtainCertificate(ctx, client)
 	if err != nil {
 		// Make sure to return a non-zero exit code if ObtainSANCertificate returned at least one error.
@@ -104,10 +106,11 @@ func run(ctx *cli.Context) error {
 		log.Fatalf("Could not obtain certificates:\n\t%v", err)
 	}
 	
-	elapsedTime := timer().Sub(start)
+	fullIssuanceElapsedTime := timer().Sub(startFullIssuance)
+	renewalElapsedTime := timer().Sub(startRenewal)
 		
 	if ctx.IsSet("timingcsv") {
-		writeElapsedTime(float64(elapsedTime)/float64(time.Millisecond), ctx.String("wrapalgo"), ctx.String("certalgo"), ctx.String("timingcsv"))
+		writeElapsedTime(float64(fullIssuanceElapsedTime)/float64(time.Millisecond), float64(renewalElapsedTime)/float64(time.Millisecond), ctx.String("wrapalgo"), ctx.String("certalgo"), ctx.String("timingcsv"))
 	}
 	
 	certsStorage.SaveResource(cert)
@@ -215,7 +218,7 @@ func obtainCertificate(ctx *cli.Context, client *lego.Client) (*certificate.Reso
 	})
 }
 
-func writeElapsedTime(elapsedTime float64, wrapAlgo, certAlgo, timingCSVPath string) {	
+func writeElapsedTime(fullIssuanceElapsedTime, renewalElapsedTime float64, wrapAlgo, certAlgo, timingCSVPath string) {	
 
 	var toWrite []string
 	certAlgorithm := api.GetToBeIssuedCertificateAlgorithm(wrapAlgo, certAlgo)
@@ -229,13 +232,13 @@ func writeElapsedTime(elapsedTime float64, wrapAlgo, certAlgo, timingCSVPath str
 	csvReader := csv.NewReader(csvFile)
 	_, err = csvReader.Read()	
 	if err == io.EOF {
-		toWrite = []string{"Certificate Public Key Algorithm", "Issuance time (ms)"}
+		toWrite = []string{"Certificate Public Key Algorithm", "Issuance time (ms)", "Renewal time (ms)"}
 		if err := csvwriter.Write(toWrite); err != nil {
 			log.Fatalf("error writing record to file. err: %s", err)
 		}
 	}
 
-	toWrite = []string{certAlgorithm, fmt.Sprintf("%f", elapsedTime)}
+	toWrite = []string{certAlgorithm, fmt.Sprintf("%f", fullIssuanceElapsedTime), fmt.Sprintf("%f", renewalElapsedTime)}
 	
 	if err := csvwriter.Write(toWrite); err != nil {
 		log.Fatalf("error writing record to file. err: %s", err)
