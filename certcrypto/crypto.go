@@ -31,11 +31,23 @@ const (
 	Dilithium2 = KeyType("Dilithium2")
 	Dilithium3 = KeyType("Dilithium3")
 	Dilithium5 = KeyType("Dilithium5")
-	Falcon512  = KeyType("Falcon512")
-	Falcon1024 = KeyType("Falcon1024")
+	Falcon512  = KeyType("Falcon-512")
+	Falcon1024 = KeyType("Falcon-1024")
+	SphincsShake256128sSimple = KeyType("sphincs+-shake256-128s-simple")
+	SphincsShake256256sSimple = KeyType("sphincs+-SHAKE256-256s-simple")
+	P256_Dilithium2 = KeyType("P256_Dilithium2")
+	P256_Falcon512 =  KeyType("P256_Falcon512")
+	P256_SphincsShake128sSimple = ("P256_sphincs+-shake256-128s-simple")
+	P384_Dilithium3  = KeyType("P384_Dilithium3")
+	P521_Dilithium5 = KeyType("P521_Dilitihium5")
+	P521_Falcon1024 = KeyType("P521_Falcon1024")
+	P521_SphincsShake256sSimple = KeyType("P521_sphincs+-SHAKE256-256s-simple")
 )
 
-var liboqsKeyTypes = []string{"Dilithium2", "Dilithium3", "Dilithium5", "Falcon512", "Falcon1024"}
+var liboqsKeyTypes = []string{	"Dilithium2", "Dilithium3", "Dilithium5", "Falcon-512", "Falcon-1024", "sphincs+-shake256-128s-simple", "sphincs+-SHAKE256-256s-simple", 
+								"P256_Dilithium2", "P256_Falcon-512", "P256_sphincs+-shake256-128s-simple", 
+								"P384_Dilithium3", 
+								"P521_Dilithium5", "P521_Falcon-1024", "P521_sphincs+-SHAKE256-256s-simple"}
 
 const (
 	// OCSPGood means that the certificate is valid.
