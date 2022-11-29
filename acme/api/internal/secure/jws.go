@@ -58,6 +58,24 @@ func (j *JWS) SignContent(url string, content []byte) (*jose.JSONWebSignature, e
 			alg = jose.Falcon512
 		case liboqs_sig.Falcon1024:
 			alg = jose.Falcon1024
+		case liboqs_sig.SphincsShake128sSimple:
+			alg = jose.SphincsShake128sSimple
+		case liboqs_sig.SphincsShake256sSimple:
+			alg = jose.SphincsShake256sSimple
+		case liboqs_sig.P256_Dilithium2:
+			alg = jose.P256_Dilithium2
+		case liboqs_sig.P256_Falcon512:
+			alg = jose.P256_Falcon512
+		case liboqs_sig.P256_SphincsShake128sSimple:
+			alg = jose.P256_SphincsShake128sSimple
+		case liboqs_sig.P384_Dilithium3:
+			alg = jose.P384_Dilithium3
+		case liboqs_sig.P521_Dilithium5:
+			alg = jose.P521_Dilithium5
+		case liboqs_sig.P521_Falcon1024:
+			alg = jose.P521_Falcon1024
+		case liboqs_sig.P521_SphincsShake256sSimple:
+			alg = jose.P521_SphincsShake256sSimple
 		}
 	}
 
