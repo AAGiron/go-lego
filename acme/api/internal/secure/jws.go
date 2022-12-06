@@ -51,7 +51,7 @@ func (j *JWS) SignContent(url string, content []byte) (*jose.JSONWebSignature, e
 		case liboqs_sig.Dilithium2:
 			alg = jose.Dilithium2
 		case liboqs_sig.Dilithium3:
-			alg = jose.Dilithium2
+			alg = jose.Dilithium3
 		case liboqs_sig.Dilithium5:
 			alg = jose.Dilithium5
 		case liboqs_sig.Falcon512:
