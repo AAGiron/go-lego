@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"strings"
 	"time"
@@ -72,6 +73,36 @@ backups of this folder is ideal.
 `
 
 func run(ctx *cli.Context) error {
+	if ctx.Bool("synclego") {
+		// Wait for Pebble to be ready
+		const expectedMessage = "pebble is ready"
+		server, err := net.Listen("tcp", "127.0.0.1:9000")
+		if err != nil {
+			panic(err)
+		}
+		
+		defer server.Close()	
+		
+		connection, err := server.Accept()
+		if err != nil {
+			panic(err)
+		}
+		
+		buffer := make([]byte, len([]byte(expectedMessage)))
+		
+		_, err = connection.Read(buffer)
+		if err != nil {
+			panic(err)
+		}
+
+		if string(buffer) != expectedMessage {
+			panic("received message does not match expected message")
+		}
+		connection.Close()
+
+		// Pebble is ready, now we can proceed with the normal execution
+	}
+
 	timer := time.Now
 	startFullIssuance := timer()	
 

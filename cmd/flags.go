@@ -193,5 +193,12 @@ func CreateFlags(defaultPath string) []cli.Flag {
 			Usage: "Path to the CSV file where the load tests results are written to.",
 			Value: "",
 		},
+
+		// Miscellaneous flags
+		&cli.BoolFlag{
+			Name:  "synclego",
+			Usage: "By setting this flag to true, the ACME Server will send a notification to the ACME Client saying that the server is ready for connections. This notification will be sent through a socket.",
+			Value: false,
+		},
 	}
 }
