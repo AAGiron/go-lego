@@ -130,7 +130,14 @@ func run(ctx *cli.Context) error {
 
 	startRenewal := timer()	
 
-	cert, err := obtainCertificate(ctx, client)
+	//selects new challenge (/pq-order):
+	labelChallCSV := ""
+	if ctx.Bool("newchallenge"){		
+		//cert, err = obtainCertificateFromNewChallenge(ctx, client, account)
+		labelChallCSV = "-new-challenge"
+	}
+
+	cert, err := obtainCertificate(ctx, client,certsStorage)
 	if err != nil {
 		// Make sure to return a non-zero exit code if ObtainSANCertificate returned at least one error.
 		// Due to us not returning partial certificate we can just exit here instead of at the end.
@@ -141,7 +148,7 @@ func run(ctx *cli.Context) error {
 	renewalElapsedTime := timer().Sub(startRenewal)
 		
 	if ctx.IsSet("timingcsv") {
-		writeElapsedTime(float64(fullIssuanceElapsedTime)/float64(time.Millisecond), float64(renewalElapsedTime)/float64(time.Millisecond), ctx.String("wrapalgo"), ctx.String("certalgo"), ctx.String("timingcsv"))
+		writeElapsedTime(float64(fullIssuanceElapsedTime)/float64(time.Millisecond), float64(renewalElapsedTime)/float64(time.Millisecond), ctx.String("wrapalgo"), ctx.String("certalgo")+labelChallCSV, ctx.String("timingcsv"))
 	}
 	
 	certsStorage.SaveResource(cert)
@@ -208,7 +215,9 @@ func register(ctx *cli.Context, client *lego.Client) (*registration.Resource, er
 	return client.Registration.Register(registration.RegisterOptions{TermsOfServiceAgreed: true})
 }
 
-func obtainCertificate(ctx *cli.Context, client *lego.Client) (*certificate.Resource, error) {
+
+//now adding 'certsStorage' for the newchallenge
+func obtainCertificate(ctx *cli.Context, client *lego.Client, certsStorage  *CertificatesStorage) (*certificate.Resource, error) {
 	api.PerformLoadTest = ctx.Bool("loadtestfinalize")
 	api.NumThreads = ctx.Int("numthreads")
 	api.LoadTestDurationSeconds = ctx.Int("loadtestduration")
@@ -229,8 +238,11 @@ func obtainCertificate(ctx *cli.Context, client *lego.Client) (*certificate.Reso
 			AlwaysDeactivateAuthorizations: ctx.Bool("always-deactivate-authorizations"),
 			CertAlgorithm: 									certcrypto.KeyType(ctx.String("certalgo")),
 			PKIELPData: certificate.PKIELPInfo{CertPSK: ctx.String("certpsk"), WrapAlgorithm: ctx.String("wrapalgo")},
-		}		
-		
+		}
+		//selects for new-challenge issuance
+		if ctx.Bool("newchallenge"){
+			return client.Certificate.TransitToPQC(request, certsStorage)
+		}
 		return client.Certificate.Obtain(request)
 	}
 
@@ -241,6 +253,8 @@ func obtainCertificate(ctx *cli.Context, client *lego.Client) (*certificate.Reso
 	}
 
 	// obtain a certificate for this CSR
+	//TODO: make the TransitToPQC case if a CSR is previously provided
+	//if ctx.Bool("newchallenge"){
 	return client.Certificate.ObtainForCSR(certificate.ObtainForCSRRequest{
 		CSR:                            csr,
 		Bundle:                         bundle,
@@ -248,6 +262,8 @@ func obtainCertificate(ctx *cli.Context, client *lego.Client) (*certificate.Reso
 		AlwaysDeactivateAuthorizations: ctx.Bool("always-deactivate-authorizations"),
 	})
 }
+
+
 
 func writeElapsedTime(fullIssuanceElapsedTime, renewalElapsedTime float64, wrapAlgo, certAlgo, timingCSVPath string) {	
 

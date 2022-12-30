@@ -200,5 +200,9 @@ func CreateFlags(defaultPath string) []cli.Flag {
 			Usage: "By setting this flag to true, the ACME Server will send a notification to the ACME Client saying that the server is ready for connections. This notification will be sent through a socket.",
 			Value: false,
 		},
+		&cli.BoolFlag{
+			Name:  "newchallenge", //'new challenge' will not be 'new' forever 
+			Usage: "Creates account and download certificate as usual, but uses the new challenge to transit X times to PQC certificate (asking Pebble's /pq-order endpoint). Requires a previously generated certificate to the desired domain.",
+		},
 	}
 }

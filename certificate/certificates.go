@@ -621,3 +621,15 @@ func sanitizeDomain(domains []string) []string {
 	}
 	return sanitizedDomains
 }
+
+// TransitToPQC tries to obtain a single certificate using all domains passed into it (just like Obtain)
+// however, it uses the 'new challenge'. In summary:
+//			Gets domains from ctx and retrieves previously issued certificate, 
+//			make an auth. POST to Pebble's /pq-order
+//			including a CSR in that POST
+//			if ok, then post-as-get to download certificate
+// Requirement: a previously generated certificate for the TLS client auth (tries to retrieve from storage)
+func  (c *Certifier) TransitToPQC(request ObtainRequest, storage) (*Resource, error){
+	fmt.Println("TO BE IMPLEMENTED")
+	return nil
+}
