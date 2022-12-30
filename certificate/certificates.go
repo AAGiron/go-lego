@@ -624,12 +624,32 @@ func sanitizeDomain(domains []string) []string {
 
 // TransitToPQC tries to obtain a single certificate using all domains passed into it (just like Obtain)
 // however, it uses the 'new challenge'. In summary:
-//			Gets domains from ctx and retrieves previously issued certificate, 
+//			Gets domains from request and retrieves previously issued certificate, 
 //			make an auth. POST to Pebble's /pq-order
 //			including a CSR in that POST
 //			if ok, then post-as-get to download certificate
 // Requirement: a previously generated certificate for the TLS client auth (tries to retrieve from storage)
-func  (c *Certifier) TransitToPQC(request ObtainRequest, storage) (*Resource, error){
-	fmt.Println("TO BE IMPLEMENTED")
+func  (c *Certifier) TransitToPQC(request ObtainRequest,  storage *CertificatesStorage) (*Resource, error){
+
+	if len(request.Domains) == 0 {
+		return nil, errors.New("no domains to obtain a certificate for")
+	}
+
+	domains := sanitizeDomain(request.Domains)
+
+	//retrieve certificate(s)
+	var certResource []certificate.Resource
+	for _, domain := range domains {
+		certResource = append(certResource, storage.ReadResource(domain))
+	}
+
+	if request.Bundle {
+		log.Infof("[%s] acme: Obtaining bundled SAN certificate", strings.Join(domains, ", "))
+	} else {
+		log.Infof("[%s] acme: Obtaining SAN certificate", strings.Join(domains, ", "))
+	}
+
+	
+	
 	return nil
 }
