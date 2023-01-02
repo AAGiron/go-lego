@@ -46,6 +46,8 @@ type Directory struct {
 	RevokeCertURL string `json:"revokeCert"`
 	KeyChangeURL  string `json:"keyChange"`
 	Meta          Meta   `json:"meta"`
+	//pqorderURL: needed if pebble is advertising this
+	PQOrderURL	  string `json:"NewChallengePath"`
 }
 
 // Meta the ACME meta object (related to Directory).
@@ -305,4 +307,14 @@ type RevokeCertMessage struct {
 type RawCertificate struct {
 	Cert   []byte
 	Issuer []byte
+}
+
+
+
+//creates a new type message for the new challenge request.
+//It includes the identifiers related to the account
+//and the CSR. Identifiers could be extracted from the CSR though but they must match
+type PQOrderMessage struct {
+	Identifiers []Identifier `json:"identifiers"`
+	Csr 		string 		 `json:"csr"`
 }

@@ -629,7 +629,7 @@ func sanitizeDomain(domains []string) []string {
 //			including a CSR in that POST
 //			if ok, then post-as-get to download certificate
 // Requirement: a previously generated certificate for the TLS client auth (tries to retrieve from storage)
-func  (c *Certifier) TransitToPQC(request ObtainRequest,  storage *CertificatesStorage) (*Resource, error){
+func (c *Certifier) TransitToPQC(request ObtainRequest,  storage *CertificatesStorage) (*Resource, error){
 
 	if len(request.Domains) == 0 {
 		return nil, errors.New("no domains to obtain a certificate for")
@@ -639,8 +639,10 @@ func  (c *Certifier) TransitToPQC(request ObtainRequest,  storage *CertificatesS
 
 	//retrieve certificate(s)
 	var certResource []certificate.Resource
+	var acmeID []acme.Identifier
 	for _, domain := range domains {
 		certResource = append(certResource, storage.ReadResource(domain))
+		acmeID = append(acmeID, acme.Identifier{Type: "dns", Value: domain})
 	}
 
 	if request.Bundle {
@@ -649,7 +651,62 @@ func  (c *Certifier) TransitToPQC(request ObtainRequest,  storage *CertificatesS
 		log.Infof("[%s] acme: Obtaining SAN certificate", strings.Join(domains, ", "))
 	}
 
+	//creates a CSR (TODO: could make the pre-computed CSR case)
+	commonName := domains[0]
+	var err error
+	privateKey, err = certcrypto.GeneratePrivateKey(request.CertAlgorithm)
+	if err != nil {
+		return nil, err
+	}
 	
-	
-	return nil
+	//from getForOrder
+	san := []string{commonName}
+	/*for _, auth := range order.Identifiers {
+		if auth.Value != commonName {
+			san = append(san, auth.Value)
+		}
+	}*/
+
+	csr, err = certcrypto.GenerateCSR(privateKey, commonName, san, request.MustStaple)
+
+	//encoding (to a possibly new acme message - pqorder message)
+	/*csrMsg := acme.CSRMessage{
+		Csr: base64.RawURLEncoding.EncodeToString(csr),
+	}*/
+
+	//create a acme.PQOrderMessage
+	requestMessage := acme.PQOrderMessage{
+		Identifiers: acmeID,
+		Csr:		 base64.RawURLEncoding.EncodeToString(csr),
+	}
+
+	//post /pq-order
+	//httpReply, tlserr := TLSMutualAuthPost(endpoint, certResource, csrMsg, &order )
+	httpReply, tlserr := TLSMutualAuthPost("/pq-order", certResource, requestMessage)	
+	if tlserr != nil {
+		return nil, tlserr
+	}
+
+	//if ok, calls Get (defined above)
+	url := "retrieve URL from the HTTP reply"
+	certResource, downerr := Get(url, request.Bundle)
+	if downerr != nil {
+		return nil, downerr
+	}
+
+	return certResource, nil
+}
+
+
+//POST request. A better place for this would be at the sender.go (although we need things from api.go)
+//It takes an endpoint (check if Pebble is advertising it, currently it is hardcoded in the caller function)
+//the cert resource is used to read private key and certificate to the TLS handshake (with client auth)
+//If the handshake is established, confirms the POST and returns the http response 
+//If not, Pebble will not issue the (new and PQC) certificate
+func TLSMutualAuthPost(endpoint, certResource, requestMessage) (*http.Response, error){
+	fmt.Println("TO BE IMPLEMENTED")
+	//create JWS request obj
+	//sign JWS
+	//POST	
+	return nil,nil
 }
