@@ -20,8 +20,8 @@ import (
 // Core ACME/LE core API.
 type Core struct {
 	doer         *sender.Doer
-	nonceManager *nonces.Manager
-	jws          *secure.JWS
+	NonceManager *nonces.Manager
+	Jws          *secure.JWS
 	directory    acme.Directory
 	HTTPClient   *http.Client
 
@@ -46,7 +46,7 @@ func New(httpClient *http.Client, userAgent, caDirURL, kid string, privateKey cr
 
 	jws := secure.NewJWS(privateKey, kid, nonceManager)
 
-	c := &Core{doer: doer, nonceManager: nonceManager, jws: jws, directory: dir, HTTPClient: httpClient}
+	c := &Core{doer: doer, NonceManager: nonceManager, Jws: jws, directory: dir, HTTPClient: httpClient}
 
 	c.common.core = c
 	c.Accounts = (*AccountService)(&c.common)
@@ -112,7 +112,7 @@ func (a *Core) retrievablePost(uri string, content []byte, response interface{})
 }
 
 func (a *Core) signedPost(uri string, content []byte, response interface{}) (*http.Response, error) {
-	signedContent, err := a.jws.SignContent(uri, content)
+	signedContent, err := a.Jws.SignContent(uri, content)
 	if err != nil {
 		return nil, fmt.Errorf("failed to post JWS message: failed to sign content: %w", err)
 	}
@@ -124,14 +124,14 @@ func (a *Core) signedPost(uri string, content []byte, response interface{}) (*ht
 	// nonceErr is ignored to keep the root error.
 	nonce, nonceErr := nonces.GetFromResponse(resp)
 	if nonceErr == nil {
-		a.nonceManager.Push(nonce)
+		a.NonceManager.Push(nonce)
 	}
 
 	return resp, err
 }
 
 func (a *Core) signEABContent(newAccountURL, kid string, hmac []byte) ([]byte, error) {
-	eabJWS, err := a.jws.SignEABContent(newAccountURL, kid, hmac)
+	eabJWS, err := a.Jws.SignEABContent(newAccountURL, kid, hmac)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func (a *Core) signEABContent(newAccountURL, kid string, hmac []byte) ([]byte, e
 
 // GetKeyAuthorization Gets the key authorization.
 func (a *Core) GetKeyAuthorization(token string) (string, error) {
-	return a.jws.GetKeyAuthorization(token)
+	return a.Jws.GetKeyAuthorization(token)
 }
 
 func (a *Core) GetDirectory() acme.Directory {

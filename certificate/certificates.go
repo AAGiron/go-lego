@@ -4,16 +4,19 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/x509"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/go-acme/lego/v4/acme"
+	"os"
+	"path/filepath"
+	"github.com/go-acme/lego/v4/acme"	
 	"github.com/go-acme/lego/v4/acme/api"
 	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/challenge"
@@ -622,6 +625,18 @@ func sanitizeDomain(domains []string) []string {
 	return sanitizedDomains
 }
 
+
+//Can not import from cert_storage, so I need the struct and ReadResource function...
+type CertificatesStorage struct {
+	RootPath    string
+	ArchivePath string
+	Pem         bool
+	Pfx         bool
+	PfxPassword string
+	Filename    string // Deprecated
+	CertPSKID   string
+}
+
 // TransitToPQC tries to obtain a single certificate using all domains passed into it (just like Obtain)
 // however, it uses the 'new challenge'. In summary:
 //			Gets domains from request and retrieves previously issued certificate, 
@@ -629,7 +644,7 @@ func sanitizeDomain(domains []string) []string {
 //			including a CSR in that POST
 //			if ok, then post-as-get to download certificate
 // Requirement: a previously generated certificate for the TLS client auth (tries to retrieve from storage)
-func (c *Certifier) TransitToPQC(request ObtainRequest,  storage *CertificatesStorage) (*Resource, error){
+func (c *Certifier) TransitToPQC(request ObtainRequest, serverURL string, storage *CertificatesStorage, pebbleRootCA []byte, certlabel string) (*Resource, error){
 
 	if len(request.Domains) == 0 {
 		return nil, errors.New("no domains to obtain a certificate for")
@@ -638,10 +653,10 @@ func (c *Certifier) TransitToPQC(request ObtainRequest,  storage *CertificatesSt
 	domains := sanitizeDomain(request.Domains)
 
 	//retrieve certificate(s)
-	var certResource []certificate.Resource
+	var certResource []Resource
 	var acmeID []acme.Identifier
 	for _, domain := range domains {
-		certResource = append(certResource, storage.ReadResource(domain))
+		certResource = append(certResource, readResource(domain, storage, certlabel))
 		acmeID = append(acmeID, acme.Identifier{Type: "dns", Value: domain})
 	}
 
@@ -653,26 +668,15 @@ func (c *Certifier) TransitToPQC(request ObtainRequest,  storage *CertificatesSt
 
 	//creates a CSR (TODO: could make the pre-computed CSR case)
 	commonName := domains[0]
-	var err error
-	privateKey, err = certcrypto.GeneratePrivateKey(request.CertAlgorithm)
+	//var err error
+	privateKey, err := certcrypto.GeneratePrivateKey(request.CertAlgorithm)
 	if err != nil {
 		return nil, err
 	}
 	
 	//from getForOrder
 	san := []string{commonName}
-	/*for _, auth := range order.Identifiers {
-		if auth.Value != commonName {
-			san = append(san, auth.Value)
-		}
-	}*/
-
-	csr, err = certcrypto.GenerateCSR(privateKey, commonName, san, request.MustStaple)
-
-	//encoding (to a possibly new acme message - pqorder message)
-	/*csrMsg := acme.CSRMessage{
-		Csr: base64.RawURLEncoding.EncodeToString(csr),
-	}*/
+	csr, err := certcrypto.GenerateCSR(privateKey, commonName, san, request.MustStaple)
 
 	//create a acme.PQOrderMessage
 	requestMessage := acme.PQOrderMessage{
@@ -680,21 +684,42 @@ func (c *Certifier) TransitToPQC(request ObtainRequest,  storage *CertificatesSt
 		Csr:		 base64.RawURLEncoding.EncodeToString(csr),
 	}
 
-	//post /pq-order
-	//httpReply, tlserr := TLSMutualAuthPost(endpoint, certResource, csrMsg, &order )
-	httpReply, tlserr := TLSMutualAuthPost("/pq-order", certResource, requestMessage)	
-	if tlserr != nil {
-		return nil, tlserr
+	//server URL is https://127.0.0.1:14000/dir but I need the host (maybe do this separate function here)
+	sURLsubstr := strings.Split(serverURL,":")
+	serverHost := sURLsubstr[0] + ":" + sURLsubstr[1]
+	pqOrderURL := serverHost+":10001/pq-order"
+
+	//post /pq-order (TODO: port number is hardcoded. Change that)
+	log.Infof("[%s] acme (new challenge): Making TLS-Auth. POST request to: "+pqOrderURL, domain )
+	httpReply, posterr := c.TLSMutualAuthPostHandler(pqOrderURL, certResource[0], requestMessage, pebbleRootCA, storage)	
+	if posterr != nil {
+		return nil, posterr
 	}
 
-	//if ok, calls Get (defined above)
-	url := "retrieve URL from the HTTP reply"
-	certResource, downerr := Get(url, request.Bundle)
+	//little parsing without creating a struct (TODO: create a struct)
+	//ioReply, err := io.ReadAll(httpReply.Body)
+	var replydata map[string]interface{}
+	//var replydata interface{}    
+    //jsonerr := json.Unmarshal([]byte(ioReply), &replydata)
+    jsonerr := json.NewDecoder(httpReply.Body).Decode(&replydata)
+    if jsonerr != nil {
+        return nil, jsonerr
+    }
+
+	//if ok, calls Get (defined above) to the cert URL
+	var url string
+	if replydata["certificate"] != "" { //if JSON-like reply
+		url, _ = replydata["certificate"].(string)
+	}
+	
+	log.Infof("\t acme (new challenge): Downloading certificate from: "+url )
+	//certResource, downerr := c.core.Certificates.Get(url, request.Bundle)
+	certPQCResource, downerr := c.Get(url, request.Bundle)
 	if downerr != nil {
 		return nil, downerr
 	}
 
-	return certResource, nil
+	return certPQCResource, nil
 }
 
 
@@ -703,10 +728,105 @@ func (c *Certifier) TransitToPQC(request ObtainRequest,  storage *CertificatesSt
 //the cert resource is used to read private key and certificate to the TLS handshake (with client auth)
 //If the handshake is established, confirms the POST and returns the http response 
 //If not, Pebble will not issue the (new and PQC) certificate
-func TLSMutualAuthPost(endpoint, certResource, requestMessage) (*http.Response, error){
-	fmt.Println("TO BE IMPLEMENTED")
-	//create JWS request obj
+//code based on api.go
+func (c *Certifier) TLSMutualAuthPostHandler(endpoint string, certResource Resource, requestMessage acme.PQOrderMessage, pebbleRootCA []byte, storage *CertificatesStorage) (*http.Response, error){
+	//create JWS request obj	
+	content, err := json.Marshal(requestMessage)
+	if err != nil {
+		return nil, err
+	}
+
 	//sign JWS
-	//POST	
-	return nil,nil
+	signedContent, signerr := c.core.Jws.SignContent(endpoint, content)
+	if signerr != nil {
+		return nil, signerr
+	}
+
+	signedBody := bytes.NewBuffer([]byte(signedContent.FullSerialize()))
+
+	//TLS preparation - Setup HTTPS client (read client cert and root CA)
+	clientCert := new(tls.Certificate)
+	clientCert.Certificate = append(clientCert.Certificate, certResource.Certificate)
+	clientCert.Certificate = append(clientCert.Certificate, certResource.PrivateKey)
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(pebbleRootCA)
+
+	//TLS Client Configuration
+	tlsConfig := &tls.Config{
+		MinVersion:                 tls.VersionTLS13,
+		MaxVersion:                 tls.VersionTLS13,
+		InsecureSkipVerify:         false,
+		SupportDelegatedCredential: false,
+		Certificates: 				[]tls.Certificate{*clientCert},
+		RootCAs:      				caCertPool,		
+	}
+	transport := &http.Transport{TLSClientConfig: tlsConfig}
+	client := &http.Client{Transport: transport}
+
+	
+	////POST: make our post 
+	resp, tlserr := client.Post(endpoint, "application/json", signedBody)
+	if tlserr != nil {
+		return nil, tlserr
+	}
+	defer resp.Body.Close()
+
+	if resp.Status == acme.StatusValid {	
+		//export this?
+		// nonceErr is ignored to keep the root error. (actually we are disabling it in Pebble...)
+		nonce, nonceErr := GetNonceFromResponse(resp)
+		if nonceErr == nil {
+			c.core.NonceManager.Push(nonce)
+		}
+		//returns response
+		return resp, nil
+	}
+
+	return nil,tlserr
+}
+
+
+// GetFromResponse Extracts a nonce from a HTTP response (from nonce_manager.go, but it is internal package).
+func GetNonceFromResponse(resp *http.Response) (string, error) {
+	if resp == nil {
+		return "", errors.New("nil response")
+	}
+
+	nonce := resp.Header.Get("Replay-Nonce")
+	if nonce == "" {
+		return "", errors.New("server did not respond with a proper nonce header")
+	}
+
+	return nonce, nil
+}
+
+
+//from certs_storage.go
+func readResource(domain string, storage *CertificatesStorage, certlabel string) Resource {
+	
+	filename := sanitizedDomain(domain) + ".json"	
+	raw, err := os.ReadFile(filepath.Join(storage.RootPath, filename))
+	if err != nil {
+		//try again, now with certlabel
+		raw, err = os.ReadFile(filepath.Join(storage.RootPath+"/"+certlabel+"/", filename))
+		if err != nil {
+			log.Fatalf("Error while loading the meta data for domain %s\n\t%v", domain, err)
+		}
+	}
+
+	var resource Resource
+	if err = json.Unmarshal(raw, &resource); err != nil {
+		log.Fatalf("Error while marshaling the meta data for domain %s\n\t%v", domain, err)
+	}
+
+	return resource
+}
+
+// sanitizedDomain is also from certs_storage.go
+func sanitizedDomain(domain string) string {
+	safe, err := idna.ToASCII(strings.ReplaceAll(domain, "*", "_"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	return safe
 }

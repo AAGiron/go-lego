@@ -17,7 +17,7 @@ func (a *AccountService) New(req acme.Account) (acme.ExtendedAccount, error) {
 	location := getLocation(resp)
 
 	if len(location) > 0 {
-		a.core.jws.SetKid(location)
+		a.core.Jws.SetKid(location)
 	}
 
 	if err != nil {
