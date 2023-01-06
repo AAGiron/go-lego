@@ -107,12 +107,15 @@ func run(ctx *cli.Context) error {
 	//for testing the new challenge
 	var pebbleRootCA []byte
 	var pebbleerr error
+	labelChallCSV := ""
 	if ctx.Bool("newchallenge"){
 		//we need the Root CA from Pebble's README.md:		
 		pebbleRootCA, pebbleerr = getPebbleRootCA()
 		if pebbleerr != nil {
 			log.Fatalf("Could not complete Pebble's Root CA download:\n\t%v", pebbleerr)
 		}
+
+		labelChallCSV = "-new-challenge"
 	}
 
 	timer := time.Now
@@ -135,19 +138,18 @@ func run(ctx *cli.Context) error {
 		}
 
 		fmt.Printf(rootPathWarningMessage, accountsStorage.GetRootPath())
+		fmt.Println("Account ID:"+account.GetRegistration().URI)
+	}else{
+		if ctx.Bool("newchallenge"){
+			//need a new account if we want to test PQC account keys (or do a roll-over)
+			log.Fatalf("For the new challenge a new account (email) is required.")
+		}
 	}
 
 	certsStorage := NewCertificatesStorage(ctx)
 	certsStorage.CreateRootFolder()
 
 	startRenewal := timer()	
-
-	//selects new challenge (/pq-order):
-	labelChallCSV := ""
-	if ctx.Bool("newchallenge"){		
-		//cert, err = obtainCertificateFromNewChallenge(ctx, client, account)
-		labelChallCSV = "-new-challenge"
-	}
 
 	cert, err := obtainCertificate(ctx, client,certsStorage, pebbleRootCA)
 	if err != nil {
