@@ -696,7 +696,6 @@ func (c *Certifier) TransitToPQC(request ObtainRequest, serverURL string, storag
 	sURLsubstr := strings.Split(serverURL,":")
 	serverHost := sURLsubstr[0] + ":" + sURLsubstr[1]
 	pqOrderURL := serverHost+":10001/pq-order"
-	//pqOrderURL := "https://0.0.0.0:10001/pq-order"
 
 	//post /pq-order (TODO: port number is hardcoded. Change that)
 	log.Infof("[%s] acme (new challenge): Making TLS-Auth. POST request to: "+pqOrderURL, commonName )
@@ -704,7 +703,8 @@ func (c *Certifier) TransitToPQC(request ObtainRequest, serverURL string, storag
 	if posterr != nil {
 		return nil, posterr
 	}
-	log.Infof("[%s] acme (new challenge): TLS-Auth. POST Status Valid.", commonName )
+	log.Infof("[%s] acme (new challenge): TLS-Auth. POST Status Valid.", commonName)
+	defer httpReply.Body.Close()
 
 	//little parsing without creating a struct (TODO: create a struct)
 	//ioReply, err := io.ReadAll(httpReply.Body)
@@ -718,13 +718,13 @@ func (c *Certifier) TransitToPQC(request ObtainRequest, serverURL string, storag
 
 	//if ok, calls Get (defined above) to the cert URL
 	var url string
+	//fmt.Println(replydata)
 	if replydata["certificate"] != "" { //if JSON-like reply
 		url, _ = replydata["certificate"].(string)
 	}
 	
-	log.Infof("[%s] acme (new challenge): Downloading certificate from: "+url, commonName )
-	//certResource, downerr := c.core.Certificates.Get(url, request.Bundle)
-	certPQCResource, downerr := c.Get(url, request.Bundle)
+	log.Infof("[%s] acme (new challenge): Downloading certificate from: "+url, commonName)
+	certPQCResource, downerr := c.Get(url, request.Bundle) //if url is null Get() handles it
 	if downerr != nil {
 		return nil, downerr
 	}
@@ -781,9 +781,9 @@ func (c *Certifier) TLSMutualAuthPostHandler(endpoint string, cert *x509.Certifi
 	if tlserr != nil {
 		return nil, tlserr
 	}
-	defer resp.Body.Close()
+	//defer resp.Body.Close()
 
-	if resp.Status == acme.StatusValid {			//there's an error here (status http vs acme)
+	if resp.Status == "200 OK" {	
 		//export this?
 		// nonceErr is ignored to keep the root error. (actually we are disabling it in Pebble...)
 		nonce, nonceErr := GetNonceFromResponse(resp)
