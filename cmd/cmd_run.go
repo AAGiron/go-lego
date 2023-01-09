@@ -4,13 +4,11 @@ import (
 	"bufio"
 	"encoding/csv"
 	"fmt"
-	"net/http"
 	"io"
 	"net"
 	"os"
 	"strings"
 	"time"
-
 	"github.com/go-acme/lego/v4/acme/api"
 	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/certificate"
@@ -105,16 +103,8 @@ func run(ctx *cli.Context) error {
 	}
 
 	//for testing the new challenge
-	var pebbleRootCA []byte
-	var pebbleerr error
 	labelChallCSV := ""
 	if ctx.Bool("newchallenge"){
-		//we need the Root CA from Pebble's README.md:		
-		pebbleRootCA, pebbleerr = getPebbleRootCA()
-		if pebbleerr != nil {
-			log.Fatalf("Could not complete Pebble's Root CA download:\n\t%v", pebbleerr)
-		}
-
 		labelChallCSV = "-new-challenge"
 	}
 
@@ -151,7 +141,7 @@ func run(ctx *cli.Context) error {
 
 	startRenewal := timer()	
 
-	cert, err := obtainCertificate(ctx, client,certsStorage, pebbleRootCA)
+	cert, err := obtainCertificate(ctx, client,certsStorage)
 	if err != nil {
 		// Make sure to return a non-zero exit code if ObtainSANCertificate returned at least one error.
 		// Due to us not returning partial certificate we can just exit here instead of at the end.
@@ -231,7 +221,7 @@ func register(ctx *cli.Context, client *lego.Client) (*registration.Resource, er
 
 
 //now adding 'certsStorage' and 'pebbleRootCA' for the newchallenge
-func obtainCertificate(ctx *cli.Context, client *lego.Client, certsStorage  *CertificatesStorage, pebbleRootCA []byte) (*certificate.Resource, error) {
+func obtainCertificate(ctx *cli.Context, client *lego.Client, certsStorage  *CertificatesStorage) (*certificate.Resource, error) {
 	api.PerformLoadTest = ctx.Bool("loadtestfinalize")
 	api.NumThreads = ctx.Int("numthreads")
 	api.LoadTestDurationSeconds = ctx.Int("loadtestduration")
@@ -265,7 +255,7 @@ func obtainCertificate(ctx *cli.Context, client *lego.Client, certsStorage  *Cer
 					Filename    :	certsStorage.filename, // Deprecated
 					CertPSKID   :	certsStorage.certPSKID,
 			} 
-			return client.Certificate.TransitToPQC(request, ctx.String("server"), certsStoragePackaged, pebbleRootCA, ctx.String("certlabel"))
+			return client.Certificate.TransitToPQC(request, ctx.String("server"), certsStoragePackaged, ctx.String("certlabel"))
 		}
 		return client.Certificate.Obtain(request)
 	}
@@ -317,28 +307,4 @@ func writeElapsedTime(fullIssuanceElapsedTime, renewalElapsedTime float64, wrapA
 	
 	csvwriter.Flush()
 	csvFile.Close()
-}
-
-
-/*  Pebble's README.md: Note that the CA's root and intermediate certificates are regenerated on every
-	launch. They can be retrieved by a `GET` request to `https://localhost:15000/roots/0`
-	and `https://localhost:15000/intermediates/0` respectively.
-*/
-func getPebbleRootCA()([]byte, error){
-	
-	requestURL := "https://localhost:15000/roots/0"
-	res, err := http.Get(requestURL)
-	if err != nil {
-		fmt.Printf("Error retrieving Pebble's Root CA: %s\n", err)
-		return nil, err
-	}
-
-	rootCert, err := io.ReadAll(res.Body)
-	if err != nil {
-		fmt.Printf("Could not read response body for Pebble's Root CA: %s\n", err)
-		return nil, err
-	}
-
-//	fmt.Printf("Root CA downloaded: %s\n", rootCert)
-	return rootCert, nil
 }
