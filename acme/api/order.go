@@ -9,14 +9,16 @@ import (
 	"os"
 	"strconv"
 	"time"
-
 	"github.com/go-acme/lego/v4/acme"
+	"github.com/go-acme/lego/v4/certcrypto"
+	"crypto"
 )
 
 var PerformLoadTest bool
 var NumThreads int
 var LoadTestDurationSeconds int
 var LoadTestCSVPath, CertAlgo, WrapAlgo string
+var GenCSRatLoadTest bool
 
 type OrderService service
 
@@ -124,6 +126,26 @@ func (o *OrderService) testFinalizeOrder(orderURL string, csrMsg acme.CSRMessage
 			default:
 			}
 			
+			//test impacts of including CSR crypto operations
+			if GenCSRatLoadTest {
+				var privateKey crypto.PrivateKey
+				var err error
+				privateKey, err = certcrypto.GeneratePrivateKey(certcrypto.KeyType(CertAlgo))
+				if err != nil {
+					panic(err)
+				}
+
+				san := []string{"teste"}
+				for _, auth := range order.Identifiers {
+					if auth.Value != "teste" {
+						san = append(san, auth.Value)
+					}
+				}
+
+//				var csr []byte
+				_, err = certcrypto.GenerateCSR(privateKey, "teste", san, true)
+			}
+
 			resp, err := o.core.post(orderURL, csrMsg, order)		
 			if err != nil {
 				continue
