@@ -133,17 +133,7 @@ func CreateFlags(defaultPath string) []cli.Flag {
 			Value: 30,
 		},
 
-		// PKIELP related flags
-		&cli.StringFlag{
-			Name: "certpsk",
-			Usage: "Cert PSK to be used in the Wrapped Certificate",
-			Value: "",
-		},
-		&cli.StringFlag{
-			Name: "certlabel",
-			Usage: "Identity of the Cert PSK",
-			Value: "",
-		},
+		// PQTLS related flags
 		&cli.BoolFlag{
 			Name: "pqtls",
 			Usage: "By setting this flag to true, the ACME Client will perform a PQTLS connection with the ACME server",
@@ -159,12 +149,6 @@ func CreateFlags(defaultPath string) []cli.Flag {
 			Usage: "The signature algorithm to be used in the certificate issuing. Possible values: P256, P348, 2048, 4096, 8192, Dilithium2, Dilithium3, Dilithium5, Falcon512, Falcon1024",
 			Value: "",
 		},
-		&cli.StringFlag{
-			Name:  "wrapalgo",
-			Usage: "The symmetric cryptography algorithm to be used in the PKIELP proposal. Possible values: AES256, Ascon80pq.",
-			Value: "",
-		},
-
 		// Timing measurement related flags
 		&cli.StringFlag{
 			Name:  "timingcsv",

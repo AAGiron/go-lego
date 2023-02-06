@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"time"
+
 	"github.com/go-acme/lego/v4/acme/api"
 	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/certificate"
@@ -242,7 +243,6 @@ func obtainCertificate(ctx *cli.Context, client *lego.Client, certsStorage  *Cer
 			PreferredChain:                 ctx.String("preferred-chain"),
 			AlwaysDeactivateAuthorizations: ctx.Bool("always-deactivate-authorizations"),
 			CertAlgorithm: 									certcrypto.KeyType(ctx.String("certalgo")),
-			PKIELPData: certificate.PKIELPInfo{CertPSK: ctx.String("certpsk"), WrapAlgorithm: ctx.String("wrapalgo")},
 		}
 		//selects for new-challenge issuance
 		if ctx.Bool("newchallenge"){
@@ -254,7 +254,6 @@ func obtainCertificate(ctx *cli.Context, client *lego.Client, certsStorage  *Cer
 					Pfx 		:   certsStorage.pfx,
 					PfxPassword :	certsStorage.pfxPassword,
 					Filename    :	certsStorage.filename, // Deprecated
-					CertPSKID   :	certsStorage.certPSKID,
 			} 
 			return client.Certificate.TransitToPQC(request, ctx.String("server"), certsStoragePackaged, ctx.String("certlabel"))
 		}
@@ -283,7 +282,7 @@ func obtainCertificate(ctx *cli.Context, client *lego.Client, certsStorage  *Cer
 func writeElapsedTime(fullIssuanceElapsedTime, renewalElapsedTime float64, wrapAlgo, certAlgo, timingCSVPath string) {	
 
 	var toWrite []string
-	certAlgorithm := api.GetToBeIssuedCertificateAlgorithm(wrapAlgo, certAlgo)
+	certAlgorithm := api.GetToBeIssuedCertificateAlgorithm(wrapAlgo)
 
 	csvFile, err := os.OpenFile(timingCSVPath, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {

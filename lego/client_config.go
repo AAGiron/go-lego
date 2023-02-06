@@ -106,7 +106,6 @@ func createPQTLSHTTPClient(curveString string) *http.Client {
 		ServerName: os.Getenv(caServerNameEnvVar),
 		RootCAs:    initCertPool(),
 		PQTLSEnabled: true,
-		IgnoreSigAlg: true,
 	}
 
 	curveID := tls.StringToCurveIDMap[curveString]

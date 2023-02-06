@@ -167,7 +167,7 @@ func (o *OrderService) testFinalizeOrder(orderURL string, csrMsg acme.CSRMessage
 func writeLoadTestResults(successfulRequests int) error {
 
 	var toWrite []string
-	certAlgorithm := GetToBeIssuedCertificateAlgorithm(WrapAlgo, CertAlgo)
+	certAlgorithm := GetToBeIssuedCertificateAlgorithm(CertAlgo)
 
 	csvFile, err := os.OpenFile(LoadTestCSVPath, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
@@ -195,10 +195,8 @@ func writeLoadTestResults(successfulRequests int) error {
 	return nil
 }
 
-func GetToBeIssuedCertificateAlgorithm(wrapAlgo, certAlgo string) string {
-	if wrapAlgo != "" {
-		return wrapAlgo + "_ECDSA-" + certAlgo
-	} else if certAlgo == "P256" || certAlgo == "P384" || certAlgo == "P521" {
+func GetToBeIssuedCertificateAlgorithm(certAlgo string) string {
+	if certAlgo == "P256" || certAlgo == "P384" || certAlgo == "P521" {
 		return "ECDSA_" + certAlgo
 	}	else {  // post-quantum algorithm
 		return certAlgo

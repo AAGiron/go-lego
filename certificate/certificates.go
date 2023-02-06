@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"crypto/tls"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -43,11 +42,6 @@ type Resource struct {
 	CSR               []byte `json:"-"`
 }
 
-type PKIELPInfo struct {
-	CertPSK string
-	WrapAlgorithm string
-}
-
 // ObtainRequest The request to obtain certificate.
 //
 // The first domain in domains is used for the CommonName field of the certificate,
@@ -67,9 +61,8 @@ type ObtainRequest struct {
 	PrivateKey                     crypto.PrivateKey
 	MustStaple                     bool
 	PreferredChain                 string
-	AlwaysDeactivateAuthorizations bool	
-	CertAlgorithm			  					 certcrypto.KeyType
-	PKIELPData                     PKIELPInfo
+	AlwaysDeactivateAuthorizations bool
+	CertAlgorithm			  	        certcrypto.KeyType	
 }
 
 // ObtainForCSRRequest The request to obtain a certificate matching the CSR passed into it.
@@ -149,7 +142,7 @@ func (c *Certifier) Obtain(request ObtainRequest) (*Resource, error) {
 	log.Infof("[%s] acme: Validations succeeded; requesting certificates", strings.Join(domains, ", "))
 
 	failures := make(obtainError)
-	cert, err := c.getForOrder(domains, order, request.Bundle, request.PrivateKey, request.MustStaple, request.PreferredChain, request.CertAlgorithm, request.PKIELPData) // certPSK
+	cert, err := c.getForOrder(domains, order, request.Bundle, request.PrivateKey, request.MustStaple, request.PreferredChain, request.CertAlgorithm)
 	if err != nil {
 		for _, auth := range authz {
 			failures[challenge.GetTargetedDomain(auth)] = err
@@ -238,7 +231,7 @@ func (c *Certifier) ObtainForCSR(request ObtainForCSRRequest) (*Resource, error)
 	return cert, nil
 }
 
-func (c *Certifier) getForOrder(domains []string, order acme.ExtendedOrder, bundle bool, privateKey crypto.PrivateKey, mustStaple bool, preferredChain string, certAlgorithm certcrypto.KeyType, pkiELPData PKIELPInfo) (*Resource, error) {
+func (c *Certifier) getForOrder(domains []string, order acme.ExtendedOrder, bundle bool, privateKey crypto.PrivateKey, mustStaple bool, preferredChain string, certAlgorithm certcrypto.KeyType) (*Resource, error) {
 	if privateKey == nil {
 		var err error
 		privateKey, err = certcrypto.GeneratePrivateKey(certAlgorithm)
@@ -266,17 +259,7 @@ func (c *Certifier) getForOrder(domains []string, order acme.ExtendedOrder, bund
 	var csr []byte
 	var err error
 
-	// TODO: should the CSR be customizable?
-	if pkiELPData.CertPSK == "" {
-		csr, err = certcrypto.GenerateCSR(privateKey, commonName, san, mustStaple)
-	} else {
-		decodedCertPSK, err := hex.DecodeString(pkiELPData.CertPSK)
-		if err != nil {
-			return nil, err
-		}
-		fmt.Printf("\nLEGO will generate a CSR with a wrapped public key...\n\n")
-		csr, err = certcrypto.GenerateWrappedCSR(privateKey, commonName, san, mustStaple, decodedCertPSK, pkiELPData.WrapAlgorithm)
-	}
+	csr, err = certcrypto.GenerateCSR(privateKey, commonName, san, mustStaple)
 		
 	if err != nil {
 		return nil, err
@@ -685,8 +668,8 @@ func (c *Certifier) TransitToPQC(request ObtainRequest, serverURL string, storag
 	pqOrderURL := serverHost+":10001/pq-order"
 
 	//post /pq-order (TODO: port number is hardcoded. Change that)
-	log.Infof("[%s] acme (new challenge): Making TLS-Auth. POST request to: "+pqOrderURL, commonName )
-	httpReply, posterr := c.TLSMutualAuthPostHandler(pqOrderURL, domains[0], requestMessage, storage, certlabel)	
+	log.Infof("[%s] acme (new challenge): Making TLS-Auth. POST request to: "+pqOrderURL, commonName)
+	httpReply, posterr := c.TLSMutualAuthPostHandler(pqOrderURL, domains[0], requestMessage, storage)	
 	if posterr != nil {
 		return nil, posterr
 	}
@@ -726,13 +709,12 @@ func (c *Certifier) TransitToPQC(request ObtainRequest, serverURL string, storag
 //If the handshake is established, confirms the POST and returns the http response 
 //If not, Pebble will not issue the (new and PQC) certificate
 //code based on api.go
-func (c *Certifier) TLSMutualAuthPostHandler(endpoint string, domain string, requestMessage acme.PQOrderMessage, storage *CertificatesStorage, certlabel string) (*http.Response, error){
+func (c *Certifier) TLSMutualAuthPostHandler(endpoint string, domain string, requestMessage acme.PQOrderMessage, storage *CertificatesStorage) (*http.Response, error){
 	//create JWS request obj	
 	content, err := json.Marshal(requestMessage)
 	if err != nil {
 		return nil, err
 	}
-
 	//sign JWS	
 	signedContent, signerr := c.core.Jws.SignContent(endpoint, content)
 	if signerr != nil {
@@ -744,8 +726,8 @@ func (c *Certifier) TLSMutualAuthPostHandler(endpoint string, domain string, req
 	//TLS preparation - Setup HTTPS client (read client cert and root CA)
 	filename := sanitizedDomain(domain) + ".crt"
 	keyname := sanitizedDomain(domain) + ".key"
-	certFile := filepath.Join(storage.RootPath+"/"+certlabel+"/", filename)
-	keyFile := filepath.Join(storage.RootPath+"/"+certlabel+"/", keyname)
+	certFile := filepath.Join(storage.RootPath+"/", filename)
+	keyFile := filepath.Join(storage.RootPath+"/", keyname)
 
 
 	clientCert, lerr := tls.LoadX509KeyPair(certFile, keyFile)
