@@ -228,7 +228,6 @@ func obtainCertificate(ctx *cli.Context, client *lego.Client, certsStorage  *Cer
 	api.LoadTestDurationSeconds = ctx.Int("loadtestduration")
 	api.LoadTestCSVPath = ctx.String("loadtestcsv")
 	api.CertAlgo = ctx.String("certalgo")
-	api.WrapAlgo = ctx.String("wrapalgo")
 	api.GenCSRatLoadTest = ctx.Bool("genCSRatLoadTest")
 
 	bundle := !ctx.Bool("no-bundle")

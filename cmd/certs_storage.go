@@ -63,7 +63,7 @@ func NewCertificatesStorage(ctx *cli.Context) *CertificatesStorage {
 }
 
 func (s *CertificatesStorage) CreateRootFolder() {	
-	err := createNonExistingFolder(filepath.Join(s.rootPath))
+	err := createNonExistingFolder(s.rootPath)
 	if err != nil {
 		log.Fatalf("Could not check/create path: %v", err)
 	}
