@@ -2,7 +2,7 @@ module github.com/go-acme/lego/v4
 
 go 1.16
 
-replace gopkg.in/square/go-jose.v2 => ../go-jose
+replace gopkg.in/square/go-jose.v2 => ./go-jose
 
 // github.com/exoscale/egoscale v1.19.0 => It is an error, please don't use it.
 // github.com/linode/linodego v1.0.0 => It is an error, please don't use it.
