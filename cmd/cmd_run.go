@@ -229,6 +229,7 @@ func obtainCertificate(ctx *cli.Context, client *lego.Client, certsStorage  *Cer
 	api.LoadTestCSVPath = ctx.String("loadtestcsv")
 	api.CertAlgo = ctx.String("certalgo")
 	api.GenCSRatLoadTest = ctx.Bool("genCSRatLoadTest")
+	api.PQOrderEndpoint = ctx.String("pqorderport")
 
 	bundle := !ctx.Bool("no-bundle")
 

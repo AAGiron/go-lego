@@ -17,8 +17,9 @@ import (
 var PerformLoadTest bool
 var NumThreads int
 var LoadTestDurationSeconds int
-var LoadTestCSVPath, CertAlgo, WrapAlgo string
+var LoadTestCSVPath, CertAlgo string
 var GenCSRatLoadTest bool
+var PQOrderEndpoint string
 
 type OrderService service
 

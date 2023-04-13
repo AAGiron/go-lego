@@ -55,7 +55,7 @@ func NewConfig(user registration.User) *Config {
 		User:       user,
 		HTTPClient: createDefaultHTTPClient(),
 		Certificate: CertificateConfig{
-			KeyType: certcrypto.Falcon1024,
+			KeyType: certcrypto.RSA2048,
 			Timeout: 30 * time.Second,
 		},
 	}
