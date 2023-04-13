@@ -3,18 +3,20 @@ package certificate
 import (
 	"bytes"
 	"crypto"
-	"crypto/x509"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"path/filepath"
 	"strings"
 	"time"
-	"path/filepath"
-	"github.com/go-acme/lego/v4/acme"	
+
+	"github.com/go-acme/lego/v4/acme"
 	"github.com/go-acme/lego/v4/acme/api"
 	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/challenge"
@@ -662,12 +664,9 @@ func (c *Certifier) TransitToPQC(request ObtainRequest, serverURL string, storag
 		Csr:		 base64.RawURLEncoding.EncodeToString(csr),
 	}
 
-	//server URL is https://127.0.0.1:14000/dir but I need the host (maybe do this separate function here)
-	sURLsubstr := strings.Split(serverURL,":")
-	serverHost := sURLsubstr[0] + ":" + sURLsubstr[1]
-	pqOrderURL := serverHost+":10001/pq-order"
+	//create an pq-order/ endpoint based on "server" and "PQOrderPort" flags
+	pqOrderURL := getPQOrderEndpoint(serverURL, api.PQOrderEndpoint)
 
-	//post /pq-order (TODO: port number is hardcoded. Change that)
 	log.Infof("[%s] acme (new challenge): Making TLS-Auth. POST request to: "+pqOrderURL, commonName)
 	httpReply, posterr := c.TLSMutualAuthPostHandler(pqOrderURL, domains[0], requestMessage, storage)	
 	if posterr != nil {
@@ -792,4 +791,16 @@ func sanitizedDomain(domain string) string {
 		log.Fatal(err)
 	}
 	return safe
+}
+
+func getPQOrderEndpoint(serverURL, pqPort string) string{
+	url, err := url.Parse(serverURL)
+    if err != nil {
+        log.Fatal(err)
+    }
+    hostname := url.Hostname()
+	scheme := url.Scheme
+	pqOrderEndpoint := scheme+"://"+hostname+":"+pqPort+"/pq-order"
+
+	return pqOrderEndpoint
 }

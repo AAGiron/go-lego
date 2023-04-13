@@ -193,5 +193,10 @@ func CreateFlags(defaultPath string) []cli.Flag {
 			Name:  "newchallenge", //'new challenge' will not be 'new' forever 
 			Usage: "Creates account and download certificate as usual, but uses the new challenge to transit X times to PQC certificate (asking Pebble's /pq-order endpoint). Requires a previously generated certificate to the desired domain.",
 		},
+		&cli.StringFlag{
+			Name: "pqorderport",
+			Usage: "teste",
+			Value: "10003",
+		},
 	}
 }
