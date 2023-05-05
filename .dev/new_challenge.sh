@@ -1,4 +1,4 @@
-source /home/vvc/Desktop/LabSec/codes/wrapped_certificates/go-hybrid-tests/scripts/config.sh
+source /home/vvc/Desktop/LabSec/codes/acme-pqc/tests/scripts/config.sh
 NUMBER_OF_CERTS=1
 
 echo -e "Run Pebble!\n"

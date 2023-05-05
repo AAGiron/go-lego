@@ -3,9 +3,11 @@ package certificate
 import (
 	"bytes"
 	"crypto"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -748,7 +750,7 @@ func (c *Certifier) TLSMutualAuthPostHandler(endpoint string, domain string, req
 
 	
 	////POST: make our post ;charset=UTF-8
-	resp, tlserr := client.Post(endpoint, "application/jose+json", signedBody)
+	resp, tlserr := postWithCertHash(endpoint, "application/jose+json", signedBody, client, clientCert)
 	if tlserr != nil {
 		return nil, tlserr
 	}
@@ -803,4 +805,20 @@ func getPQOrderEndpoint(serverURL, pqPort string) string{
 	pqOrderEndpoint := scheme+"://"+hostname+":"+pqPort+"/pq-order"
 
 	return pqOrderEndpoint
+}
+
+func postWithCertHash(url, contentType string, body io.Reader, client *http.Client, cert tls.Certificate) (resp *http.Response, err error) {
+	// To set custom headers, it was required to use NewRequest and Client.Do.
+	req, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return nil, err
+	}
+
+	h := sha256.Sum256(cert.Certificate[0])
+	hashString := hex.EncodeToString(h[:])
+
+	req.Header.Add("certhash", hashString)
+	req.Header.Set("Content-Type", contentType)
+	return client.Do(req)
+
 }
