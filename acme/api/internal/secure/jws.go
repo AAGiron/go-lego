@@ -164,3 +164,77 @@ func (j *JWS) GetKeyAuthorization(token string) (string, error) {
 
 	return token + "." + keyThumb, nil
 }
+
+// SignContent Signs a content with the JWS.
+func (j *JWS) SignContentWithCertHash(url string, content []byte, hash string) (*jose.JSONWebSignature, error) {
+	var alg jose.SignatureAlgorithm
+	switch k := j.privKey.(type) {
+	case *rsa.PrivateKey:
+		alg = jose.RS256
+	case *ecdsa.PrivateKey:
+		if k.Curve == elliptic.P256() {
+			alg = jose.ES256
+		} else if k.Curve == elliptic.P384() {
+			alg = jose.ES384
+		}
+	case *liboqs_sig.PrivateKey:
+		switch k.SigId {
+		case liboqs_sig.Dilithium2:
+			alg = jose.Dilithium2
+		case liboqs_sig.Dilithium3:
+			alg = jose.Dilithium3
+		case liboqs_sig.Dilithium5:
+			alg = jose.Dilithium5
+		case liboqs_sig.Falcon512:
+			alg = jose.Falcon512
+		case liboqs_sig.Falcon1024:
+			alg = jose.Falcon1024
+		case liboqs_sig.SphincsShake128sSimple:
+			alg = jose.SphincsShake128sSimple
+		case liboqs_sig.SphincsShake256sSimple:
+			alg = jose.SphincsShake256sSimple
+		case liboqs_sig.P256_Dilithium2:
+			alg = jose.P256_Dilithium2
+		case liboqs_sig.P256_Falcon512:
+			alg = jose.P256_Falcon512
+		case liboqs_sig.P256_SphincsShake128sSimple:
+			alg = jose.P256_SphincsShake128sSimple
+		case liboqs_sig.P384_Dilithium3:
+			alg = jose.P384_Dilithium3
+		case liboqs_sig.P521_Dilithium5:
+			alg = jose.P521_Dilithium5
+		case liboqs_sig.P521_Falcon1024:
+			alg = jose.P521_Falcon1024
+		case liboqs_sig.P521_SphincsShake256sSimple:
+			alg = jose.P521_SphincsShake256sSimple
+		}
+	}
+
+	signKey := jose.SigningKey{
+		Algorithm: alg,
+		Key:       jose.JSONWebKey{Key: j.privKey, KeyID: j.kid},
+	}
+
+	options := jose.SignerOptions{
+		NonceSource: j.nonces,
+		ExtraHeaders: map[jose.HeaderKey]interface{}{
+			"url": url,
+			"certhash": hash,
+		},
+	}
+
+	if j.kid == "" {
+		options.EmbedJWK = true
+	}
+
+	signer, err := jose.NewSigner(signKey, &options)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create jose signer: %w", err)
+	}
+
+	signed, err := signer.Sign(content)
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign content: %w", err)
+	}
+	return signed, nil
+}
