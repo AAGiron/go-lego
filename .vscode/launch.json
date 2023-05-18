@@ -5,6 +5,28 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "ACME WITHOUT nch: classic chain",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "cwd": "${workspaceRoot}",
+      "program": "${workspaceRoot}/cmd/lego/main.go",
+      "dlvFlags": ["--check-go-version=false"],
+      "args": [
+        "-s", "https://localhost:14000/dir",
+        "-d", "teste",
+        "-m", "teste@teste.com",
+        "--http.port", ":5002",
+        "--http", 
+        "-a",
+        "--pqtls",
+        "--kex", "Kyber512",
+        "-k", "RSA4096",
+        "--certalgo", "4096",
+        "run"
+      ],
+    },
+    {
       "name": "ACME WITHOUT nch: post-quantum chain",
       "type": "go",
       "request": "launch",
@@ -21,8 +43,8 @@
         "-a",
         "--pqtls",
         "--kex", "Kyber512",
-        "-k", "ec384",
-        "--certalgo", "P384",
+        "-k", "Dilithium2",
+        "--certalgo", "Dilithium2",
         "run"
       ],
     },
